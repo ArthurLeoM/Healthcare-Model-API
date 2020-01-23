@@ -113,7 +113,7 @@ class Recalibration(nn.Module):
         return x * y.expand_as(x), y
 
 class AdaCare(nn.Module):
-    def __init__(self, hidden_dim=128, kernel_size=2, kernel_num=64, input_dim=76, output_dim=1, dropout=0.5, r_v=4, r_c=4, activation='sigmoid', device='cuda'):
+    def __init__(self, hidden_dim=64, kernel_size=2, kernel_num=64, input_dim=17, output_dim=1, dropout=0.5, r_v=1, r_c=1, activation='sparsemax', device='cuda'):
         super(AdaCare, self).__init__()
         self.hidden_dim = hidden_dim
         self.kernel_size = kernel_size
