@@ -30,6 +30,7 @@ from utils import metrics
 from utils import common_utils
 from model import AdaCare
 from LM import patient_LM
+from concare import vanilla_transformer_encoder
 
 import json
 import tornado
@@ -130,6 +131,20 @@ def runLM(data):
     return ret_pred
 
 
+def runConcare(data):
+    with torch.no_grad():
+        test_x = np.stack((data[0], data[0]), axis=0)
+        test_x = torch.tensor(test_x, dtype=torch.float32).to(device)
+        if test_x.size()[1] > 400:
+            test_x = test_x[:, :400, :]
+        test_len = np.array([test_x.size()[1], test_x.size()[1]])
+        test_len = torch.tensor(test_len, dtype=torch.float32).to(device).int()
+        test_output, _loss, _context, multihead_attn = model_concare(test_x, test_len)  
+        multihead_attn = multihead_attn.cpu().detach().numpy()[0]
+        multihead_attn = multihead_attn.squeeze().tolist()
+        return multihead_attn
+
+
 def processAttList(AttList):
     result={}
     for name in order:
@@ -158,13 +173,15 @@ class IndexHandler(RequestHandler):
         print("data generated...")
         output, att = runAda(data)
         pred = runLM(data)
+        feature_attn = runConcare(data)
         print("output generated...")
         att = processAttList(att)
         output = output.squeeze().tolist()
         result = {
             "predict": output,
             "attention": att,
-            "predict_next_value": pred
+            "predict_next_value": pred,
+            "feature_attn": feature_attn
         }
         self.write(json_encode(result))
 
@@ -184,6 +201,14 @@ checkpoint_LM = torch.load('./saved_weights/lm-ckd', map_location=lambda storage
 model_LM.load_state_dict(checkpoint_LM['net'])
 optimizer_LM.load_state_dict(checkpoint_LM['optimizer'])
 model_LM.eval()
+
+model_concare =  vanilla_transformer_encoder(device=device).to(device)
+optimizer_concare = torch.optim.Adam(model_concare.parameters(), lr=0.001)
+
+checkpoint_concare = torch.load('./saved_weights/concare-ckd', map_location=lambda storage, loc: storage)
+model_concare.load_state_dict(checkpoint_concare['net'])
+optimizer_concare.load_state_dict(checkpoint_concare['optimizer'])
+model_concare.eval()
 
 define('port', type=int, default=10406, multiple=False)
 parse_config_file('config')
