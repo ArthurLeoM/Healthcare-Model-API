@@ -31,6 +31,7 @@ from utils import common_utils
 from model import AdaCare
 from LM import patient_LM
 from concare import vanilla_transformer_encoder
+from check_clu import getCluster
 
 import json
 import tornado
@@ -108,6 +109,7 @@ def runAda(data):
             test_x = test_x[:, :400, :]
         test_output, test_att = model_Ada(test_x, device)  #output: 1 t 1, att: 1 t f
     ret_output = test_output.cpu().detach().numpy()
+    ret_output = ret_output.squeeze().tolist()
     ret_att = []
     for i in test_att:
         ret_att.append(i.cpu().detach().numpy().tolist())
@@ -133,16 +135,52 @@ def runLM(data):
 
 def runConcare(data):
     with torch.no_grad():
-        test_x = np.stack((data[0], data[0]), axis=0)
+        '''test_x = np.stack((data[0], data[0]), axis=0)
         test_x = torch.tensor(test_x, dtype=torch.float32).to(device)
-        if test_x.size()[1] > 400:
-            test_x = test_x[:, :400, :]
         test_len = np.array([test_x.size()[1], test_x.size()[1]])
+        test_len = torch.tensor(test_len, dtype=torch.float32).to(device).int()'''
+        data = data[0]
+        data_len = np.size(data, axis=0)
+        if data_len > 400:
+            data = data[:400, :]
+            data_len = 400
+
+        if data_len == 1:
+            test_x = np.stack((data, data), axis=0)
+            test_x = torch.tensor(test_x, dtype=torch.float32).to(device)
+            test_len = np.array([test_x.size()[1], test_x.size()[1]])
+            test_len = torch.tensor(test_len, dtype=torch.float32).to(device).int()
+            test_output, context, attn = model_concare(test_x, test_len) 
+            output = test_output.cpu().detach().numpy().squeeze().tolist()
+            context = context.cpu().detach().numpy().squeeze().tolist()
+            attn = attn.cpu().detach().numpy().squeeze().tolist()
+            return output[0], context[0], attn[0]
+
+        test_x = []
+        test_len = []
+        for i in range(data_len):
+            cur_data = np.zeros((data_len, 17))
+            idx = data_len - i
+            cur_data[:idx] = data[:idx]
+            test_x.append(cur_data)
+            test_len.append(idx)
+        test_x = np.array(test_x)
+        #print(test_x)
+        test_x = torch.tensor(test_x, dtype=torch.float32).to(device)
+        test_len = np.array(test_len)
         test_len = torch.tensor(test_len, dtype=torch.float32).to(device).int()
-        test_output, _loss, _context, multihead_attn = model_concare(test_x, test_len)  
-        multihead_attn = multihead_attn.cpu().detach().numpy()[0]
-        multihead_attn = multihead_attn.squeeze().tolist()
-        return multihead_attn
+        test_output, context, attn = model_concare(test_x, test_len) 
+        output = test_output.cpu().detach().numpy().squeeze()
+        output = np.flip(output, axis=0).tolist()
+        context = context.cpu().detach().numpy().squeeze().tolist()
+        attn = attn.cpu().detach().numpy()
+        attn = np.flip(attn, axis=0)
+        attn_dict = {}
+        idx = 0
+        for name in order:
+            attn_dict[name] = attn[:, idx].tolist()
+            idx += 1
+        return output, context[0], attn_dict
 
 
 def processAttList(AttList):
@@ -152,7 +190,6 @@ def processAttList(AttList):
     for visit in AttList:
         for itemIndex in range(len(order)):
             result[order[itemIndex]].append(visit[0][itemIndex][0])
-
     return result
 
 
@@ -171,17 +208,29 @@ class IndexHandler(RequestHandler):
         print("json resolved...")
         data = genData(raw_data)
         print("data generated...")
-        output, att = runAda(data)
-        pred = runLM(data)
-        feature_attn = runConcare(data)
+
+        ada_output, ada_attn = runAda(data)
+        ada_attn = processAttList(ada_attn)
+        ada_res = {
+            "predict": ada_output, 
+            "attention": ada_attn
+        }
+
+        pred_next_val = runLM(data)
+        con_output, con_context, con_attn = runConcare(data)
+        cluster_id, top_pdid = getCluster(con_context, top_num=6)
+        concare_res = {
+            "predict": con_output,
+            "attention": con_attn,
+            "cluster_id": cluster_id,
+            "cluster_top6_pdid": top_pdid
+        }
+
         print("output generated...")
-        att = processAttList(att)
-        output = output.squeeze().tolist()
         result = {
-            "predict": output,
-            "attention": att,
-            "predict_next_value": pred,
-            "feature_attn": feature_attn
+            "Adacare": ada_res,
+            "LM_next_val": pred_next_val,
+            "Concare": concare_res
         }
         self.write(json_encode(result))
 

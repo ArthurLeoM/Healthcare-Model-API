@@ -501,9 +501,9 @@ class vanilla_transformer_encoder(nn.Module):
         # weighted_contexts = torch.matmul(input_dim_scores, contexts).squeeze()
 #         print(contexts.shape)
 
-        weighted_contexts = self.FinalAttentionQKV(contexts)[0]
+        weighted_contexts, feature_attn = self.FinalAttentionQKV(contexts)
         output = self.output(self.dropout(weighted_contexts))# b 1
         output = self.sigmoid(output)
 #         print(weighted_contexts.shape)
           
-        return output, DeCov_loss  ,weighted_contexts, self.MultiHeadedAttention.attn
+        return output, weighted_contexts, feature_attn
