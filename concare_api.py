@@ -148,17 +148,16 @@ def runConcare(data):
         return output, context[0], attn_dict
 
 
-def processAttList(AttList):
-    result={}
-    for name in order:
-        result[name]=[]
-    for visit in AttList:
-        for itemIndex in range(len(order)):
-            result[order[itemIndex]].append(visit[0][itemIndex][0])
-    return result
-
-
 class IndexHandler(RequestHandler):
+    def set_default_headers(self):
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+        self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+
+    def options(self):
+        self.set_status(204)
+        self.finish()
+        
     def get(self, *args, **kwargs):
         result = {
             "predict": '0',
