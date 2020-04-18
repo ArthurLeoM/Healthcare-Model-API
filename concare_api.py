@@ -30,7 +30,7 @@ from utils import metrics
 from utils import common_utils
 from model import AdaCare
 from LM import patient_LM
-from concare import vanilla_transformer_encoder
+from concare_new import vanilla_transformer_encoder
 from check_clu import getCluster
 
 import json
