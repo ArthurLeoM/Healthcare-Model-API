@@ -32,12 +32,12 @@ from utils import common_utils
 class Sparsemax(nn.Module):
     """Sparsemax function."""
 
-    def __init__(self, dim=None):
+    def __init__(self, device='cuda', dim=None):
         super(Sparsemax, self).__init__()
-
+        self.device = device
         self.dim = -1 if dim is None else dim
 
-    def forward(self, input, device='cuda'):
+    def forward(self, input):
         original_size = input.size()
         input = input.view(-1, input.size(self.dim))
         
@@ -47,7 +47,7 @@ class Sparsemax(nn.Module):
         input = input - torch.max(input, dim=dim, keepdim=True)[0].expand_as(input)
 
         zs = torch.sort(input=input, dim=dim, descending=True)[0]
-        range = torch.arange(start=1, end=number_of_logits+1, device=device, dtype=torch.float32).view(1, -1)
+        range = torch.arange(start=1, end=number_of_logits+1, device=self.device, dtype=torch.float32).view(1, -1)
         range = range.expand_as(zs)
 
         bound = 1 + range * zs
@@ -199,13 +199,13 @@ class SingleAttention(nn.Module):
         return v, a
 
 class FinalAttentionQKV(nn.Module):
-    def __init__(self, attention_input_dim, attention_hidden_dim, attention_type='add', dropout=None):
+    def __init__(self, attention_input_dim, attention_hidden_dim, attention_type='add', dropout=None, device='cuda'):
         super(FinalAttentionQKV, self).__init__()
         
         self.attention_type = attention_type
         self.attention_hidden_dim = attention_hidden_dim
         self.attention_input_dim = attention_input_dim
-
+        self.device=device
 
         self.W_q = nn.Linear(attention_input_dim, attention_hidden_dim)
         self.W_k = nn.Linear(attention_input_dim, attention_hidden_dim)
@@ -232,7 +232,7 @@ class FinalAttentionQKV(nn.Module):
         self.tanh = nn.Tanh()
 #         self.softmax = nn.Softmax()
         self.sigmoid = nn.Sigmoid()
-        self.sparsemax = Sparsemax()
+        self.sparsemax = Sparsemax(device=self.device)
     
     def forward(self, input):
  
@@ -476,7 +476,7 @@ class vanilla_transformer_encoder(nn.Module):
         self.GRUs = clones(nn.GRU(1, self.hidden_dim, batch_first = True), self.input_dim)
         self.LastStepAttentions = clones(SingleAttention(self.hidden_dim, 8, attention_type='concat', demographic_dim=12, time_aware=True, use_demographic=False),self.input_dim)
         
-        self.FinalAttentionQKV = FinalAttentionQKV(self.hidden_dim, self.hidden_dim, attention_type='mul',dropout = 0)
+        self.FinalAttentionQKV = FinalAttentionQKV(self.hidden_dim, self.hidden_dim, attention_type='mul',dropout = 0, device=device)
 
         self.MultiHeadedAttention = MultiHeadedAttention(self.MHD_num_head, self.d_model,dropout = 1 - self.keep_prob)
         self.SublayerConnection = SublayerConnection(self.d_model, dropout = 1 - self.keep_prob)
