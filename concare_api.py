@@ -189,7 +189,7 @@ class IndexHandler(RequestHandler):
 model_concare =  vanilla_transformer_encoder(device=device).to(device)
 optimizer_concare = torch.optim.Adam(model_concare.parameters(), lr=0.001)
 
-checkpoint_concare = torch.load('./saved_weights/concare-ckd', map_location=lambda storage, loc: storage)
+checkpoint_concare = torch.load('./saved_weights/concare-ckd-5-fold-sp7', map_location=lambda storage, loc: storage)
 model_concare.load_state_dict(checkpoint_concare['net'])
 optimizer_concare.load_state_dict(checkpoint_concare['optimizer'])
 model_concare.eval()
