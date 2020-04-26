@@ -199,7 +199,7 @@ class SingleAttention(nn.Module):
         return v, a
 
 class FinalAttentionQKV(nn.Module):
-    def __init__(self, attention_input_dim, attention_hidden_dim, attention_type='add', dropout=None, device):
+    def __init__(self, attention_input_dim, attention_hidden_dim, device, attention_type='add', dropout=None):
         super(FinalAttentionQKV, self).__init__()
         
         self.attention_type = attention_type
@@ -457,7 +457,7 @@ class SublayerConnection(nn.Module):
         return x + self.dropout(returned_value[0]) , returned_value[1]
 
 class vanilla_transformer_encoder(nn.Module):
-    def __init__(self, input_dim=17, hidden_dim=32, d_model=32,  MHD_num_head=4, d_ff=64, output_dim=1, device, keep_prob=0.5):
+    def __init__(self, device, input_dim=17, hidden_dim=32, d_model=32,  MHD_num_head=4, d_ff=64, output_dim=1, keep_prob=0.5):
         super(vanilla_transformer_encoder, self).__init__()
 
         # hyperparameters
