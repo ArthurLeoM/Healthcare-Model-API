@@ -32,7 +32,7 @@ from utils import common_utils
 class Sparsemax(nn.Module):
     """Sparsemax function."""
 
-    def __init__(self, device='cuda', dim=None):
+    def __init__(self, device, dim=None):
         super(Sparsemax, self).__init__()
         self.device = device
         self.dim = -1 if dim is None else dim
@@ -199,7 +199,7 @@ class SingleAttention(nn.Module):
         return v, a
 
 class FinalAttentionQKV(nn.Module):
-    def __init__(self, attention_input_dim, attention_hidden_dim, attention_type='add', dropout=None, device='cuda'):
+    def __init__(self, attention_input_dim, attention_hidden_dim, attention_type='add', dropout=None, device):
         super(FinalAttentionQKV, self).__init__()
         
         self.attention_type = attention_type
@@ -457,7 +457,7 @@ class SublayerConnection(nn.Module):
         return x + self.dropout(returned_value[0]) , returned_value[1]
 
 class vanilla_transformer_encoder(nn.Module):
-    def __init__(self, input_dim=17, hidden_dim=32, d_model=32,  MHD_num_head=4, d_ff=64, output_dim=1, device='cuda', keep_prob=0.5):
+    def __init__(self, input_dim=17, hidden_dim=32, d_model=32,  MHD_num_head=4, d_ff=64, output_dim=1, device, keep_prob=0.5):
         super(vanilla_transformer_encoder, self).__init__()
 
         # hyperparameters
@@ -476,7 +476,7 @@ class vanilla_transformer_encoder(nn.Module):
         self.GRUs = clones(nn.GRU(1, self.hidden_dim, batch_first = True), self.input_dim)
         self.LastStepAttentions = clones(SingleAttention(self.hidden_dim, 8, attention_type='concat', demographic_dim=12, time_aware=True, use_demographic=False),self.input_dim)
         
-        self.FinalAttentionQKV = FinalAttentionQKV(self.hidden_dim, self.hidden_dim, attention_type='mul',dropout = 0, device=device)
+        self.FinalAttentionQKV = FinalAttentionQKV(self.hidden_dim, self.hidden_dim, attention_type='mul',dropout = 0, device=self.device)
 
         self.MultiHeadedAttention = MultiHeadedAttention(self.MHD_num_head, self.d_model,dropout = 1 - self.keep_prob)
         self.SublayerConnection = SublayerConnection(self.d_model, dropout = 1 - self.keep_prob)
