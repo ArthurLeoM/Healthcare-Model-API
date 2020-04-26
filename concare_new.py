@@ -32,7 +32,7 @@ from utils import common_utils
 class Sparsemax(nn.Module):
     """Sparsemax function."""
 
-    def __init__(self, device, dim=None):
+    def __init__(self, device='cpu', dim=None):
         super(Sparsemax, self).__init__()
         self.device = device
         self.dim = -1 if dim is None else dim
