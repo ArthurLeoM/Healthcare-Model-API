@@ -136,7 +136,7 @@ def runConcare(data):
         test_len = torch.tensor(test_len, dtype=torch.float32).to(device).int()
         test_output, context, attn = model_concare(test_x, test_len) 
         output = test_output.cpu().detach().numpy().squeeze()
-        output = np.flip(output, axis=0).tolist()
+        output = (np.flip(output, axis=0) / 0.41).tolist()
         context = context.cpu().detach().numpy().squeeze().tolist()
         attn = attn.cpu().detach().numpy()
         attn = np.flip(attn, axis=0)
